@@ -10,7 +10,7 @@ export const TRENDING_CATEGORIES = ['most_active', 'highest_volume', 'highest_tu
 export type TrendingCategory = (typeof TRENDING_CATEGORIES)[number];
 
 export const CATEGORY_LABELS: Record<TrendingCategory, string> = {
-  most_active: 'Most active (turnover × trades proxy)',
+  most_active: 'Most active (by turnover)',
   highest_volume: 'Highest volume',
   highest_turnover: 'Highest turnover',
   strongest_momentum: 'Highest momentum (ROC 12)',
@@ -53,15 +53,16 @@ export class MarketService {
     const key = `market:summary:${date.toISOString().slice(0, 10)}`;
     return this.deps.cache.wrap(key, 300, async () => {
       const [agg] = await this.deps.db.$queryRaw<{ adv: bigint; dec: bigint; unch: bigint; turnover: number | null; volume: number | null; n: bigint; hi: bigint; lo: bigint }[]>`
-        WITH today AS (SELECT stock_id, close, change, volume, turnover FROM daily_prices WHERE date = ${date}::date),
-             yr AS (SELECT stock_id, MAX(high) AS h, MIN(low) AS l FROM daily_prices WHERE date > ${date}::date - INTERVAL '365 days' GROUP BY stock_id)
+        WITH today AS (SELECT stock_id, close, high, low, change, volume, turnover FROM daily_prices WHERE date = ${date}::date),
+             yr AS (SELECT stock_id, MAX(high) AS h, MIN(low) AS l FROM daily_prices
+                    WHERE date > ${date}::date - INTERVAL '365 days' AND date < ${date}::date GROUP BY stock_id)
         SELECT COUNT(*) FILTER (WHERE t.change > 0) AS adv,
                COUNT(*) FILTER (WHERE t.change < 0) AS dec,
                COUNT(*) FILTER (WHERE t.change = 0 OR t.change IS NULL) AS unch,
                SUM(t.turnover) AS turnover, SUM(t.volume) AS volume, COUNT(*) AS n,
-               COUNT(*) FILTER (WHERE t.close >= yr.h * 0.999) AS hi,
-               COUNT(*) FILTER (WHERE t.close <= yr.l * 1.001) AS lo
-        FROM today t JOIN yr ON yr.stock_id = t.stock_id`;
+               COUNT(*) FILTER (WHERE t.high > yr.h) AS hi,
+               COUNT(*) FILTER (WHERE t.low < yr.l) AS lo
+        FROM today t LEFT JOIN yr ON yr.stock_id = t.stock_id`;
       const idx = await this.index('1M');
       const lastPt = idx.points[idx.points.length - 1];
       const adv = Number(agg.adv);

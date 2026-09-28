@@ -24,6 +24,8 @@ export default async function authRoutes(app: FastifyInstance) {
   const svc = new AuthService(app, db, env.REFRESH_TOKEN_TTL_DAYS);
   // Stricter limit for credential endpoints (brute-force protection).
   const strict = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+  // Refresh runs on every full page load, so it gets a separate, looser limit.
+  const refreshLimit = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } };
 
   const respond = (reply: FastifyReply, t: IssuedTokens) => {
     reply.setCookie(REFRESH_COOKIE, t.refreshToken, {
@@ -52,7 +54,7 @@ export default async function authRoutes(app: FastifyInstance) {
     }
   });
 
-  r.post('/refresh', { ...strict, schema: { tags: ['auth'], summary: 'Rotate refresh token and get a new access token', body: RefreshBody } }, async (req, reply) => {
+  r.post('/refresh', { ...refreshLimit, schema: { tags: ['auth'], summary: 'Rotate refresh token and get a new access token', body: RefreshBody } }, async (req, reply) => {
     const token = req.cookies[REFRESH_COOKIE] ?? req.body?.refreshToken;
     if (!token) {
       reply.status(401);
