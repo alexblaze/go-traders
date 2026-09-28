@@ -48,7 +48,7 @@ describe('template analyst', () => {
     expect(a).toMatch(/Momentum may be extended/);
     expect(a).toMatch(/Volatility is elevated/);
     expect(a).toMatch(/SYNTHETIC DEMO/);
-    expect(a).not.toMatch(/probability of (profit|success)(?! )/i);
+    expect(a).not.toMatch(/\d+\s*%\s*(chance|probability)|guaranteed (returns|profit)/i);
     expect(a).toMatch(/not a probability/);
   });
 });
