@@ -21,6 +21,18 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@22.20.4)(tsx@4.23.15)
 
+  packages/backtesting:
+    dependencies:
+      '@nepse/indicators':
+        specifier: workspace:*
+        version: link:../indicators
+      '@nepse/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@nepse/strategies':
+        specifier: workspace:*
+        version: link:../strategies
+
   packages/config:
     dependencies:
       zod:
