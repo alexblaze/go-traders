@@ -2,6 +2,7 @@ import { DERIVED_INDEX_NAME, latestSnapshots, latestTradingDate, type Prisma } f
 import { mean, median } from '@nepse/shared';
 import { detectRegime } from '@nepse/strategies';
 import { ensureAnalysis } from '../../lib/analysis';
+import { STALE_DAYS } from '../screener/screener.service';
 import type { AppDeps } from '../../lib/context';
 import { rangeStart, type Range } from '../../lib/ranges';
 
@@ -141,17 +142,19 @@ export class MarketService {
     if (!date) return { category, label: CATEGORY_LABELS[category], items: [] };
     const snaps = await latestSnapshots(this.deps.db);
     const stocks = await this.deps.db.stock.findMany({ where: sector ? { company: { sector: { name: sector } } } : {}, include: { company: { include: { sector: true } } } });
-    const ens = await this.deps.db.signal.findMany({ where: { strategyId: 'ensemble', timestamp: date } });
-    const ensBy = new Map(ens.map((e) => [e.stockId, e]));
+    const ens = await this.deps.db.$queryRaw<{ stock_id: string; signal: string; strength: number; meta: Prisma.JsonObject | null }[]>`
+      SELECT DISTINCT ON (stock_id) stock_id, signal, strength, meta FROM signals WHERE strategy_id = 'ensemble' ORDER BY stock_id, timestamp DESC`;
+    const ensBy = new Map(ens.map((e) => [e.stock_id, e]));
+    const staleBefore = new Date(date.getTime() - STALE_DAYS * 86400000);
     const items = stocks
       .map((s) => {
         const snap = snaps.get(s.id);
-        if (!snap || snap.date.getTime() !== date.getTime()) return null;
+        if (!snap || snap.date < staleBefore) return null;
         const v = snap.values;
         const e = ensBy.get(s.id);
         const meta = (e?.meta ?? {}) as Prisma.JsonObject;
         return {
-          symbol: s.symbol, companyName: s.company.name, sector: s.company.sector?.name ?? null, isDemo: s.isDemo,
+          symbol: s.symbol, companyName: s.company.name, sector: s.company.sector?.name ?? null, isDemo: s.isDemo, asOf: snap.date,
           close: v.close ?? null, changePercent: v.changePercent ?? null, volume: v.volume ?? null, turnover: v.turnover ?? null,
           rsi14: v.rsi14 ?? null, roc12: v.roc12 ?? null, adx14: v.adx14 ?? null, plusDI: v.plusDI ?? null, minusDI: v.minusDI ?? null, volumeRatio: v.volumeRatio ?? null,
           ensembleSignal: e?.signal ?? null, ensembleStrength: e?.strength ?? null,

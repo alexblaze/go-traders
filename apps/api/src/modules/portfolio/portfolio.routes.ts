@@ -25,7 +25,7 @@ export default async function portfolioRoutes(app: FastifyInstance) {
   const auth = { onRequest: [app.authenticate] };
   const security = [{ bearerAuth: [] }];
 
-  r.get('/', { ...auth, schema: { tags, summary: 'Paper portfolio: cash, positions, P&L', security } }, async (req) => ok(await svc.summary(req.user.sub)));
+  r.get('', { ...auth, schema: { tags, summary: 'Paper portfolio: cash, positions, P&L', security } }, async (req) => ok(await svc.summary(req.user.sub)));
 
   r.get('/orders', { ...auth, schema: { tags, summary: 'Paper order history', querystring: PaginationQuery, security } }, async (req) => {
     const { items, total } = await svc.orders(req.user.sub, req.query.page, req.query.pageSize);

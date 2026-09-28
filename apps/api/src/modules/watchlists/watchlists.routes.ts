@@ -46,9 +46,9 @@ export default async function watchlistRoutes(app: FastifyInstance) {
     return w;
   };
 
-  r.get('/', { ...auth, schema: { tags, summary: 'Your watchlists with price, RSI, trend and signal', security } }, async (req) => ok(await watchlistView(app, req.user.sub)));
+  r.get('', { ...auth, schema: { tags, summary: 'Your watchlists with price, RSI, trend and signal', security } }, async (req) => ok(await watchlistView(app, req.user.sub)));
 
-  r.post('/', { ...auth, schema: { tags, summary: 'Create a watchlist', body: z.object({ name: z.string().min(1).max(60), symbols: z.array(z.string().max(20)).max(200).optional() }), security } }, async (req, reply) => {
+  r.post('', { ...auth, schema: { tags, summary: 'Create a watchlist', body: z.object({ name: z.string().min(1).max(60), symbols: z.array(z.string().max(20)).max(200).optional() }), security } }, async (req, reply) => {
     if (await db.watchlist.findUnique({ where: { userId_name: { userId: req.user.sub, name: req.body.name } } })) throw new AppError('CONFLICT', 'A watchlist with this name already exists');
     const stocks = req.body.symbols?.length ? await db.stock.findMany({ where: { symbol: { in: req.body.symbols.map((s) => s.toUpperCase()) } } }) : [];
     const w = await db.watchlist.create({ data: { userId: req.user.sub, name: req.body.name, items: { create: stocks.map((s) => ({ stockId: s.id })) } } });

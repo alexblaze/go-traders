@@ -10,7 +10,7 @@ export default async function notificationRoutes(app: FastifyInstance) {
   const auth = { onRequest: [app.authenticate] };
   const security = [{ bearerAuth: [] }];
 
-  r.get('/', { ...auth, schema: { tags, summary: 'In-app notifications', querystring: PaginationQuery.extend({ unread: z.coerce.boolean().optional() }), security } }, async (req) => {
+  r.get('', { ...auth, schema: { tags, summary: 'In-app notifications', querystring: PaginationQuery.extend({ unread: z.coerce.boolean().optional() }), security } }, async (req) => {
     const where = { userId: req.user.sub, channel: 'IN_APP' as const, ...(req.query.unread ? { readAt: null } : {}) };
     const [total, unread, rows] = await Promise.all([
       db.notification.count({ where }),

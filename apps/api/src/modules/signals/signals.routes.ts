@@ -7,7 +7,7 @@ import { SignalsService } from './signals.service';
 export default async function signalRoutes(app: FastifyInstance) {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const svc = new SignalsService(app.deps);
-  r.get('/', {
+  r.get('', {
     schema: {
       tags: ['signals'], summary: 'Latest signals across stocks',
       querystring: PaginationQuery.extend({

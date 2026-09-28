@@ -21,7 +21,7 @@ export default async function strategyRoutes(app: FastifyInstance) {
     }
   };
 
-  r.get('/', { onRequest: [optionalUser], schema: { tags, summary: 'List strategies (built-in + your custom strategies)' } }, async (req) => {
+  r.get('', { onRequest: [optionalUser], schema: { tags, summary: 'List strategies (built-in + your custom strategies)' } }, async (req) => {
     const rows = await db.strategy.findMany({ where: { OR: [{ isBuiltin: true }, ...(req.user ? [{ ownerId: req.user.sub }] : [])] }, include: { parameters: true }, orderBy: { createdAt: 'asc' } });
     return ok(rows.map((row) => {
       const b = defaultRegistry.get(row.id);

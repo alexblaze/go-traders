@@ -12,7 +12,7 @@ export default async function stockRoutes(app: FastifyInstance) {
   const signals = new SignalsService(app.deps);
   const tags = ['stocks'];
 
-  r.get('/', {
+  r.get('', {
     schema: {
       tags, summary: 'List/search listed stocks with latest price',
       querystring: PaginationQuery.extend({

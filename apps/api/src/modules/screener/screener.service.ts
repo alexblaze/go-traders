@@ -5,6 +5,9 @@ import { z } from 'zod';
 import { ensureAnalysis } from '../../lib/analysis';
 import type { AppDeps } from '../../lib/context';
 
+/** Stocks whose latest snapshot is older than this (vs the newest data) are treated as stale. */
+export const STALE_DAYS = 10;
+
 export const ScreenSchema = z.object({
   filter: ConditionGroupSchema.optional(),
   sectors: z.array(z.string().max(100)).max(50).optional(),
@@ -70,13 +73,15 @@ export class ScreenerService {
       where: { status: 'ACTIVE', ...(screen.sectors?.length ? { company: { sector: { name: { in: screen.sectors } } } } : {}) },
       include: { company: { include: { sector: true } } },
     });
-    const sigs = date ? await db.signal.findMany({ where: { timestamp: date, strategyId: screen.signalStrategy } }) : [];
-    const sigBy = new Map(sigs.map((s) => [s.stockId, s]));
+    const sigs = await db.$queryRaw<{ stock_id: string; signal: 'BUY' | 'SELL' | 'HOLD'; strength: number }[]>`
+      SELECT DISTINCT ON (stock_id) stock_id, signal, strength FROM signals WHERE strategy_id = ${screen.signalStrategy} ORDER BY stock_id, timestamp DESC`;
+    const sigBy = new Map(sigs.map((s) => [s.stock_id, s]));
+    const staleBefore = date ? new Date(date.getTime() - STALE_DAYS * 86400000) : null;
     const useCross = screen.filter ? groupUsesCross(screen.filter) : false;
     const results = [];
     for (const s of stocks) {
       const snap = snaps.get(s.id);
-      if (!snap || (date && snap.date.getTime() !== date.getTime())) continue;
+      if (!snap || (staleBefore && snap.date < staleBefore)) continue;
       const v = snap.values as Record<string, number | null>;
       if (screen.minPrice !== undefined && (v.close ?? -1) < screen.minPrice) continue;
       if (screen.maxPrice !== undefined && (v.close ?? Infinity) > screen.maxPrice) continue;
@@ -99,7 +104,7 @@ export class ScreenerService {
         if (!evaluateGroup(screen.filter, cur, prev, trace)) continue;
       }
       results.push({
-        symbol: s.symbol, companyName: s.company.name, sector: s.company.sector?.name ?? null, isDemo: s.isDemo,
+        symbol: s.symbol, companyName: s.company.name, sector: s.company.sector?.name ?? null, isDemo: s.isDemo, asOf: snap.date,
         ...Object.fromEntries(DSL_FIELDS.map((f) => [f, v[f] ?? null])),
         regime: (snap.values as { regime?: string }).regime ?? null,
         signal: sig?.signal ?? null, signalStrength: sig?.strength ?? null, matched: trace.map((t) => t.description),

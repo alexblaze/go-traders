@@ -33,11 +33,11 @@ export default async function alertRoutes(app: FastifyInstance) {
     repeat: a.repeat, note: a.note, lastTriggeredAt: a.lastTriggeredAt, createdAt: a.createdAt,
   });
 
-  r.get('/', { ...auth, schema: { tags, summary: 'Your alerts', security } }, async (req) =>
+  r.get('', { ...auth, schema: { tags, summary: 'Your alerts', security } }, async (req) =>
     ok((await db.alert.findMany({ where: { userId: req.user.sub }, include: { stock: true }, orderBy: { createdAt: 'desc' } })).map(present)),
   );
 
-  r.post('/', { ...auth, schema: { tags, summary: 'Create an alert (evaluated by the alert worker)', body: AlertBody, security } }, async (req, reply) => {
+  r.post('', { ...auth, schema: { tags, summary: 'Create an alert (evaluated by the alert worker)', body: AlertBody, security } }, async (req, reply) => {
     const stock = await db.stock.findUnique({ where: { symbol: req.body.symbol.toUpperCase() } });
     if (!stock) throw new AppError('INVALID_SYMBOL', 'The requested stock symbol was not found.');
     if ((await db.alert.count({ where: { userId: req.user.sub, isActive: true } })) >= 200) throw new AppError('VALIDATION_ERROR', 'Active alert limit (200) reached');

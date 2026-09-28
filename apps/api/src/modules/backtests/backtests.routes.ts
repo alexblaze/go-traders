@@ -28,7 +28,7 @@ export default async function backtestRoutes(app: FastifyInstance) {
   const auth = { onRequest: [app.authenticate] };
   const security = [{ bearerAuth: [] }];
 
-  r.post('/', {
+  r.post('', {
     ...auth,
     schema: { tags, summary: 'Queue a backtest (event-driven, next-bar-open fills, Nepal fee schedules)', body: BacktestRequestSchema, querystring: z.object({ mode: z.enum(['async', 'sync']).default('async') }), security },
   }, async (req, reply) => {
@@ -51,7 +51,7 @@ export default async function backtestRoutes(app: FastifyInstance) {
     return ok(await loadBacktest(db, bt.id, req.user.sub));
   });
 
-  r.get('/', { ...auth, schema: { tags, summary: 'Your backtests', querystring: PaginationQuery, security } }, async (req) => {
+  r.get('', { ...auth, schema: { tags, summary: 'Your backtests', querystring: PaginationQuery, security } }, async (req) => {
     const where = { userId: req.user.sub };
     const [total, rows] = await Promise.all([
       db.backtest.count({ where }),
