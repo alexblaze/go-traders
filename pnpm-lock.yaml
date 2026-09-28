@@ -320,6 +320,19 @@ importers:
         specifier: ^5.3.16
         version: 5.5.2
 
+  packages/ml:
+    dependencies:
+      '@nepse/indicators':
+        specifier: workspace:*
+        version: link:../indicators
+      '@nepse/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@nepse/market-data':
+        specifier: workspace:*
+        version: link:../market-data
+
   packages/shared:
     dependencies:
       luxon:
