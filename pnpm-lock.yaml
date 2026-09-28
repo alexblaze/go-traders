@@ -43,6 +43,18 @@ importers:
         specifier: ^3.7.1
         version: 3.7.5
 
+  packages/strategies:
+    dependencies:
+      '@nepse/indicators':
+        specifier: workspace:*
+        version: link:../indicators
+      '@nepse/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
+
 packages:
 
   '@esbuild/aix-ppc64@0.28.2':
