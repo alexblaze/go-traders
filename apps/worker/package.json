@@ -17,10 +17,15 @@
     "@nepse/market-data": "workspace:*",
     "@nepse/shared": "workspace:*",
     "@nepse/strategies": "workspace:*",
+    "@prisma/client": "6.19.3",
+    "bcryptjs": "^3.0.3",
     "bullmq": "^5.61.0",
     "ioredis": "^5.8.2",
+    "luxon": "^3.7.2",
     "nodemailer": "^7.0.9",
-    "pino": "^9.13.0"
+    "papaparse": "^5.5.3",
+    "pino": "^9.13.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/nodemailer": "^7.0.2",

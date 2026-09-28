@@ -46,7 +46,7 @@ const EnvSchema = z.object({
   LIVE_TRADING_ENABLED: bool.default(false),
 
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(4),
-  SIGNAL_CRON: z.string().default('0 11 * * 0-4'),
+  SIGNAL_CRON: z.string().default('0 16 * * 0-4'),
   ALERT_CRON: z.string().default('*/5 * * * *'),
 
   ADMIN_EMAIL: z.string().email().optional(),

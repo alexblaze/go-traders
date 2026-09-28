@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import type { AppDeps } from './lib/context';
 import adminRoutes from './modules/admin/admin.routes';
@@ -42,7 +42,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const h = req.headers['x-request-id'];
       return typeof h === 'string' && /^[\w-]{8,64}$/.test(h) ? h : randomUUID();
     },
-    disableRequestLogging: true,
+    // Built-in per-request logs are replaced by the structured onResponse log in plugins/observability.
+    logController: new LogController({ disableRequestLogging: true }),
     trustProxy: true,
     bodyLimit: 2 * 1024 * 1024,
   });
