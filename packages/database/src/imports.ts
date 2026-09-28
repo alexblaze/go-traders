@@ -37,7 +37,7 @@ export interface CommitResult {
   symbols: number;
 }
 
-async function upsertPrices(db: PrismaClient, stockId: string, rows: CsvPriceRow[], source: DataSource, importId: string): Promise<{ inserted: number; updated: number }> {
+export async function upsertPrices(db: PrismaClient, stockId: string, rows: Pick<CsvPriceRow, 'date' | 'open' | 'high' | 'low' | 'close' | 'volume' | 'turnover'>[], source: DataSource, importId: string | null): Promise<{ inserted: number; updated: number }> {
   let inserted = 0;
   let updated = 0;
   for (let i = 0; i < rows.length; i += 1000) {
