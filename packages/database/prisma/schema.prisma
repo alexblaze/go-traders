@@ -1,0 +1,720 @@
+// NEPSE Trading Signal & Research Platform — PostgreSQL schema
+// All timestamps are stored in UTC. Trading dates use @db.Date.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────── Enums ───────────────────────────────
+
+enum StockStatus {
+  ACTIVE
+  SUSPENDED
+  DELISTED
+}
+
+enum DataSource {
+  LIVE
+  HISTORICAL
+  MOCK
+  IMPORTED
+  DEMO
+}
+
+enum SignalType {
+  BUY
+  SELL
+  HOLD
+}
+
+enum Direction {
+  BULLISH
+  BEARISH
+  NEUTRAL
+}
+
+enum MarketRegime {
+  STRONG_UPTREND
+  UPTREND
+  SIDEWAYS
+  DOWNTREND
+  STRONG_DOWNTREND
+  HIGH_VOLATILITY
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  FILLED
+  REJECTED
+}
+
+enum CashTxType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum AlertType {
+  PRICE_ABOVE
+  PRICE_BELOW
+  RSI_BELOW
+  RSI_ABOVE
+  EMA_CROSSOVER_BULLISH
+  EMA_CROSSOVER_BEARISH
+  MACD_CROSSOVER_BULLISH
+  MACD_CROSSOVER_BEARISH
+  VOLUME_ABOVE
+  BREAKOUT
+  BUY_SIGNAL
+  SELL_SIGNAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  TELEGRAM
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum ImportStatus {
+  PREVIEW
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum FeeType {
+  BROKER_COMMISSION
+  SEBON_FEE
+  DP_CHARGE
+  CAPITAL_GAINS_TAX
+  OTHER
+}
+
+enum FeeAppliesTo {
+  BUY
+  SELL
+  BOTH
+}
+
+enum CorporateActionType {
+  CASH_DIVIDEND
+  BONUS_SHARE
+  RIGHT_SHARE
+  SPLIT
+  MERGER
+  OTHER
+}
+
+// ─────────────────────────────── Auth ───────────────────────────────
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // USER | ADMIN
+  description String?
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  name          String?
+  roleId        Int            @map("role_id")
+  role          Role           @relation(fields: [roleId], references: [id])
+  settings      Json?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  lastLoginAt   DateTime?      @map("last_login_at")
+  refreshTokens RefreshToken[]
+  portfolios    Portfolio[]
+  watchlists    Watchlist[]
+  alerts        Alert[]
+  notifications Notification[]
+  backtests     Backtest[]
+  imports       MarketDataImport[]
+  auditLogs     AuditLog[]
+  savedScreens  SavedScreen[]
+  strategies    Strategy[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique @map("token_hash")
+  familyId     String    @map("family_id")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────── Reference data ───────────────────────────────
+
+model Sector {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  companies   Company[]
+
+  @@map("sectors")
+}
+
+model Company {
+  id                String    @id @default(cuid())
+  name              String
+  sectorId          Int?      @map("sector_id")
+  sector            Sector?   @relation(fields: [sectorId], references: [id])
+  subSector         String?   @map("sub_sector")
+  listedDate        DateTime? @map("listed_date") @db.Date
+  sharesOutstanding Float?    @map("shares_outstanding")
+  paidUpCapital     Float?    @map("paid_up_capital")
+  website           String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  stock             Stock?
+
+  @@index([sectorId])
+  @@map("companies")
+}
+
+model Stock {
+  id                  String               @id @default(cuid())
+  symbol              String               @unique
+  companyId           String               @unique @map("company_id")
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  status              StockStatus          @default(ACTIVE)
+  isDemo              Boolean              @default(false) @map("is_demo")
+  dataSource          DataSource           @default(IMPORTED) @map("data_source")
+  delistedDate        DateTime?            @map("delisted_date") @db.Date
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  prices              DailyPrice[]
+  corporateActions    CorporateAction[]
+  indicators          TechnicalIndicator[]
+  signals             Signal[]
+  backtests           Backtest[]
+  positions           PortfolioPosition[]
+  orders              PaperOrder[]
+  watchlistItems      WatchlistItem[]
+  alerts              Alert[]
+
+  @@index([status])
+  @@map("stocks")
+}
+
+model DailyPrice {
+  id            BigInt     @id @default(autoincrement())
+  stockId       String     @map("stock_id")
+  stock         Stock      @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  date          DateTime   @db.Date
+  open          Float
+  high          Float
+  low           Float
+  close         Float
+  volume        Float
+  turnover      Float?
+  previousClose Float?     @map("previous_close")
+  change        Float?
+  changePercent Float?     @map("change_percent")
+  source        DataSource @default(IMPORTED)
+  importId      String?    @map("import_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // (symbol, date) access path: stock_id is the symbol's surrogate key.
+  @@unique([stockId, date])
+  @@index([date])
+  @@map("daily_prices")
+}
+
+model MarketIndex {
+  id            BigInt     @id @default(autoincrement())
+  name          String
+  date          DateTime   @db.Date
+  value         Float
+  change        Float?
+  changePercent Float?     @map("change_percent")
+  turnover      Float?
+  volume        Float?
+  advancers     Int?
+  decliners     Int?
+  unchanged     Int?
+  isDerived     Boolean    @default(false) @map("is_derived")
+  source        DataSource @default(IMPORTED)
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  @@unique([name, date])
+  @@index([date])
+  @@map("market_indices")
+}
+
+model CorporateAction {
+  id        String              @id @default(cuid())
+  stockId   String              @map("stock_id")
+  stock     Stock               @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  type      CorporateActionType
+  exDate    DateTime            @map("ex_date") @db.Date
+  ratio     Float?
+  amount    Float?
+  notes     String?
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@index([stockId, exDate])
+  @@map("corporate_actions")
+}
+
+model MarketHoliday {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @unique @db.Date
+  description String
+  isSpecialSession Boolean @default(false) @map("is_special_session")
+
+  @@map("market_holidays")
+}
+
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+// ─────────────────────────────── Analytics ───────────────────────────────
+
+model TechnicalIndicator {
+  id         BigInt   @id @default(autoincrement())
+  stockId    String   @map("stock_id")
+  stock      Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  date       DateTime @db.Date
+  values     Json
+  computedAt DateTime @default(now()) @map("computed_at")
+
+  @@unique([stockId, date])
+  @@index([date])
+  @@map("technical_indicators")
+}
+
+model Strategy {
+  id          String              @id
+  name        String
+  description String
+  category    String
+  isBuiltin   Boolean             @default(true) @map("is_builtin")
+  isActive    Boolean             @default(true) @map("is_active")
+  definition  Json?
+  ownerId     String?             @map("owner_id")
+  owner       User?               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  parameters  StrategyParameter[]
+  signals     Signal[]
+  backtests   Backtest[]
+
+  @@index([ownerId])
+  @@map("strategies")
+}
+
+model StrategyParameter {
+  id         String   @id @default(cuid())
+  strategyId String   @map("strategy_id")
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  key        String
+  value      Float
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([strategyId, key])
+  @@map("strategy_parameters")
+}
+
+model Signal {
+  id                String            @id @default(cuid())
+  stockId           String            @map("stock_id")
+  stock             Stock             @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  strategyId        String            @map("strategy_id")
+  strategy          Strategy          @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  timestamp         DateTime          @db.Date
+  signal            SignalType
+  strength          Int
+  price             Float
+  indicatorSnapshot Json              @map("indicator_snapshot")
+  marketRegime      MarketRegime?     @map("market_regime")
+  parameters        Json?
+  meta              Json?
+  generatedAt       DateTime          @default(now()) @map("generated_at")
+  components        SignalComponent[]
+
+  @@unique([stockId, strategyId, timestamp])
+  @@index([timestamp])
+  @@index([strategyId, timestamp])
+  @@index([signal, timestamp])
+  @@map("signals")
+}
+
+model SignalComponent {
+  id        String    @id @default(cuid())
+  signalId  String    @map("signal_id")
+  signal    Signal    @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  ordinal   Int
+  indicator String
+  condition String
+  value     Float?
+  threshold Float?
+  direction Direction
+
+  @@index([signalId])
+  @@map("signal_components")
+}
+
+model Backtest {
+  id             String          @id @default(cuid())
+  userId         String          @map("user_id")
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stockId        String          @map("stock_id")
+  stock          Stock           @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  strategyId     String          @map("strategy_id")
+  strategy       Strategy        @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  status         JobStatus       @default(QUEUED)
+  progress       Int             @default(0)
+  config         Json
+  parameters     Json?
+  fromDate       DateTime?       @map("from_date") @db.Date
+  toDate         DateTime?       @map("to_date") @db.Date
+  initialCapital Float           @map("initial_capital")
+  equityCurve    Json?           @map("equity_curve")
+  monthlyReturns Json?           @map("monthly_returns")
+  signalsLog     Json?           @map("signals_log")
+  warnings       Json?
+  walkForward    Json?           @map("walk_forward")
+  error          String?
+  jobId          String?         @map("job_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  completedAt    DateTime?       @map("completed_at")
+  trades         BacktestTrade[]
+  metrics        BacktestMetric?
+
+  @@index([userId, createdAt])
+  @@map("backtests")
+}
+
+model BacktestTrade {
+  id            String   @id @default(cuid())
+  backtestId    String   @map("backtest_id")
+  backtest      Backtest @relation(fields: [backtestId], references: [id], onDelete: Cascade)
+  entryDate     DateTime @map("entry_date") @db.Date
+  entryPrice    Float    @map("entry_price")
+  exitDate      DateTime @map("exit_date") @db.Date
+  exitPrice     Float    @map("exit_price")
+  quantity      Float
+  grossPnl      Float    @map("gross_pnl")
+  fees          Float
+  netPnl        Float    @map("net_pnl")
+  returnPct     Float    @map("return_pct")
+  holdingDays   Int      @map("holding_days")
+  exitReason    String   @map("exit_reason")
+  feeLines      Json?    @map("fee_lines")
+
+  @@index([backtestId])
+  @@map("backtest_trades")
+}
+
+model BacktestMetric {
+  id                     String   @id @default(cuid())
+  backtestId             String   @unique @map("backtest_id")
+  backtest               Backtest @relation(fields: [backtestId], references: [id], onDelete: Cascade)
+  totalReturnPct         Float    @map("total_return_pct")
+  cagrPct                Float    @map("cagr_pct")
+  maxDrawdownPct         Float    @map("max_drawdown_pct")
+  sharpeRatio            Float    @map("sharpe_ratio")
+  sortinoRatio           Float    @map("sortino_ratio")
+  winRatePct             Float    @map("win_rate_pct")
+  profitFactor           Float    @map("profit_factor")
+  numberOfTrades         Int      @map("number_of_trades")
+  averageTradePct        Float    @map("average_trade_pct")
+  averageTradePnl        Float    @map("average_trade_pnl")
+  averageWinningTradePct Float    @map("average_winning_trade_pct")
+  averageLosingTradePct  Float    @map("average_losing_trade_pct")
+  maxConsecutiveLosses   Int      @map("max_consecutive_losses")
+  exposurePct            Float    @map("exposure_pct")
+  totalFees              Float    @map("total_fees")
+  finalEquity            Float    @map("final_equity")
+  buyAndHoldReturnPct    Float    @map("buy_and_hold_return_pct")
+
+  @@map("backtest_metrics")
+}
+
+// ─────────────────────────────── Paper trading ───────────────────────────────
+
+model Portfolio {
+  id           String              @id @default(cuid())
+  userId       String              @map("user_id")
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  cash         Float
+  initialCash  Float               @map("initial_cash")
+  netDeposits  Float               @default(0) @map("net_deposits")
+  riskSettings Json?               @map("risk_settings")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+  positions    PortfolioPosition[]
+  orders       PaperOrder[]
+  cashTxs      CashTransaction[]
+
+  @@unique([userId, name])
+  @@map("portfolios")
+}
+
+model PortfolioPosition {
+  id          String    @id @default(cuid())
+  portfolioId String    @map("portfolio_id")
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stockId     String    @map("stock_id")
+  stock       Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  quantity    Float
+  averageCost Float     @map("average_cost")
+  realizedPnl Float     @default(0) @map("realized_pnl")
+  openedAt    DateTime  @default(now()) @map("opened_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([portfolioId, stockId])
+  @@map("portfolio_positions")
+}
+
+model PaperOrder {
+  id           String      @id @default(cuid())
+  portfolioId  String      @map("portfolio_id")
+  portfolio    Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  stockId      String      @map("stock_id")
+  stock        Stock       @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  side         OrderSide
+  quantity     Float
+  price        Float
+  fees         Float       @default(0)
+  feeBreakdown Json?       @map("fee_breakdown")
+  status       OrderStatus @default(FILLED)
+  strategyId   String?     @map("strategy_id")
+  signal       SignalType?
+  reason       String?
+  realizedPnl  Float?      @map("realized_pnl")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@index([portfolioId, createdAt])
+  @@map("paper_orders")
+}
+
+model CashTransaction {
+  id          String     @id @default(cuid())
+  portfolioId String     @map("portfolio_id")
+  portfolio   Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  type        CashTxType
+  amount      Float
+  note        String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@index([portfolioId])
+  @@map("cash_transactions")
+}
+
+// ─────────────────────────────── Watchlists, alerts, notifications ───────────────────────────────
+
+model Watchlist {
+  id        String          @id @default(cuid())
+  userId    String          @map("user_id")
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime        @default(now()) @map("created_at")
+  items     WatchlistItem[]
+
+  @@unique([userId, name])
+  @@map("watchlists")
+}
+
+model WatchlistItem {
+  id          String    @id @default(cuid())
+  watchlistId String    @map("watchlist_id")
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  stockId     String    @map("stock_id")
+  stock       Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  note        String?
+  addedAt     DateTime  @default(now()) @map("added_at")
+
+  @@unique([watchlistId, stockId])
+  @@map("watchlist_items")
+}
+
+model Alert {
+  id               String                @id @default(cuid())
+  userId           String                @map("user_id")
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stockId          String                @map("stock_id")
+  stock            Stock                 @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  type             AlertType
+  threshold        Float?
+  strategyId       String?               @map("strategy_id")
+  channels         NotificationChannel[] @default([IN_APP])
+  isActive         Boolean               @default(true) @map("is_active")
+  repeat           Boolean               @default(false)
+  note             String?
+  lastTriggeredAt  DateTime?             @map("last_triggered_at")
+  lastEvaluatedFor DateTime?             @map("last_evaluated_for") @db.Date
+  createdAt        DateTime              @default(now()) @map("created_at")
+  notifications    Notification[]
+
+  @@index([isActive])
+  @@index([userId])
+  @@map("alerts")
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String              @map("user_id")
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alertId   String?             @map("alert_id")
+  alert     Alert?              @relation(fields: [alertId], references: [id], onDelete: SetNull)
+  channel   NotificationChannel
+  title     String
+  body      String
+  data      Json?
+  status    NotificationStatus  @default(PENDING)
+  error     String?
+  readAt    DateTime?           @map("read_at")
+  sentAt    DateTime?           @map("sent_at")
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model SavedScreen {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  definition Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, name])
+  @@map("saved_screens")
+}
+
+// ─────────────────────────────── Operations ───────────────────────────────
+
+model MarketDataImport {
+  id           String       @id @default(cuid())
+  userId       String?      @map("user_id")
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  filename     String
+  status       ImportStatus @default(PREVIEW)
+  totalRows    Int          @default(0) @map("total_rows")
+  validRows    Int          @default(0) @map("valid_rows")
+  errorRows    Int          @default(0) @map("error_rows")
+  insertedRows Int          @default(0) @map("inserted_rows")
+  updatedRows  Int          @default(0) @map("updated_rows")
+  errors       Json?
+  warnings     Json?
+  payload      String?
+  createStocks Boolean      @default(false) @map("create_stocks")
+  jobId        String?      @map("job_id")
+  error        String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  completedAt  DateTime?    @map("completed_at")
+
+  @@map("market_data_imports")
+}
+
+model FeeSchedule {
+  id             String       @id @default(cuid())
+  name           String
+  type           FeeType
+  rate           Float        @default(0)
+  fixedAmount    Float        @default(0) @map("fixed_amount")
+  appliesTo      FeeAppliesTo @map("applies_to")
+  tiers          Json?
+  minAmount      Float?       @map("min_amount")
+  holdingDaysMin Int?         @map("holding_days_min")
+  holdingDaysMax Int?         @map("holding_days_max")
+  effectiveFrom  DateTime     @map("effective_from") @db.Date
+  effectiveTo    DateTime?    @map("effective_to") @db.Date
+  isVerified     Boolean      @default(false) @map("is_verified")
+  sourceNote     String?      @map("source_note")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([effectiveFrom, effectiveTo])
+  @@map("fee_schedules")
+}
+
+model JobRun {
+  id         String    @id @default(cuid())
+  queue      String
+  jobId      String    @map("job_id")
+  name       String
+  status     JobStatus
+  progress   Int       @default(0)
+  attempts   Int       @default(0)
+  data       Json?
+  result     Json?
+  error      String?
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  durationMs Int?      @map("duration_ms")
+
+  @@unique([queue, jobId])
+  @@index([queue, status])
+  @@index([startedAt])
+  @@map("job_runs")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String?
+  entityId  String?  @map("entity_id")
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
