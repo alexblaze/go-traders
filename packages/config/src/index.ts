@@ -35,7 +35,7 @@ const EnvSchema = z.object({
 
   AI_PROVIDER: z.enum(['anthropic', 'template']).default('template'),
   ANTHROPIC_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().default('claude-sonnet-5-5'),
+  AI_MODEL: z.string().default('claude-opus-5-5'),
 
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().default(587),

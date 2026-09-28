@@ -17,11 +17,13 @@
   },
   "dependencies": {
     "@nepse/backtesting": "workspace:*",
+    "@nepse/indicators": "workspace:*",
     "@nepse/market-data": "workspace:*",
     "@nepse/shared": "workspace:*",
     "@nepse/strategies": "workspace:*",
     "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.3",
+    "zod": "^4.1.12",
     "prisma": "6.19.3"
   },
   "devDependencies": { "tsx": "^4.20.0" }

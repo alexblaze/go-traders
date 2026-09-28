@@ -5,3 +5,6 @@ export * from './strategies';
 export * from './signals';
 export * from './market-index';
 export * from './imports';
+export * from './analysis';
+export * from './backtests';
+export * from './alerts';
