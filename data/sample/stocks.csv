@@ -1,0 +1,19 @@
+symbol,companyName,sector,subSector,listedDate,sharesOutstanding,paidUpCapital,status,isDemo
+DMCB1,"Demo Commercial Bank One Ltd (DEMO DATA)",Commercial Banks,,,,,ACTIVE,true
+DMCB2,"Demo Commercial Bank Two Ltd (DEMO DATA)",Commercial Banks,,,,,ACTIVE,true
+DMCB3,"Demo Commercial Bank Three Ltd (DEMO DATA)",Commercial Banks,,,,,ACTIVE,true
+DMDB1,"Demo Development Bank Ltd (DEMO DATA)",Development Banks,,,,,ACTIVE,true
+DMDB2,"Demo Regional Development Bank (DEMO DATA)",Development Banks,,,,,ACTIVE,true
+DMHY1,"Demo Himalayan Hydropower Ltd (DEMO DATA)",Hydro Power,,,,,ACTIVE,true
+DMHY2,"Demo River Hydro Ltd (DEMO DATA)",Hydro Power,,,,,ACTIVE,true
+DMHY3,"Demo Energy Hydro Ltd (DEMO DATA)",Hydro Power,,,,,ACTIVE,true
+DMLI1,"Demo Life Insurance Ltd (DEMO DATA)",Life Insurance,,,,,ACTIVE,true
+DMLI2,"Demo National Life Insurance (DEMO DATA)",Life Insurance,,,,,ACTIVE,true
+DMNL1,"Demo General Insurance Ltd (DEMO DATA)",Non Life Insurance,,,,,ACTIVE,true
+DMMF1,"Demo Microfinance Laghubitta (DEMO DATA)",Microfinance,,,,,ACTIVE,true
+DMMF2,"Demo Rural Laghubitta (DEMO DATA)",Microfinance,,,,,ACTIVE,true
+DMFI1,"Demo Finance Ltd (DEMO DATA)",Finance,,,,,ACTIVE,true
+DMHT1,"Demo Hotels & Resorts Ltd (DEMO DATA)",Hotels And Tourism,,,,,ACTIVE,true
+DMMP1,"Demo Manufacturing & Processing Ltd (DEMO DATA)",Manufacturing And Processing,,,,,ACTIVE,true
+DMIN1,"Demo Investment Co Ltd (DEMO DATA)",Investment,,,,,ACTIVE,true
+DMTR1,"Demo Trading Ltd (DEMO DATA)",Tradings,,,,,ACTIVE,true

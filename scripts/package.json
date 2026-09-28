@@ -1,0 +1,8 @@
+{
+  "name": "@nepse/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "demo-data": "tsx generate-demo-data.ts ../data/sample" },
+  "dependencies": { "@nepse/market-data": "workspace:*" }
+}
