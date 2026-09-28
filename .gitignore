@@ -11,3 +11,5 @@ coverage
 uploads/
 next-env.d.ts
 *.tsbuildinfo
+dump.rdb
+*.rdb
